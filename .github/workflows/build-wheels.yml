@@ -24,15 +24,6 @@ jobs:
       - name: Upgrade pip
         run: python -m pip install --upgrade pip
 
-      # 🔹 Génération nom versionné automatique
-      - name: Generate bundle version
-        run: |
-          DATE=$(date +'%Y%m%d')
-          RUN=${{ github.run_number }}
-          VERSION="offline-wheels-python312-manylinux-x86_64-${DATE}-run${RUN}"
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "Bundle version: $VERSION"
-
       - name: Create wheels directory
         run: mkdir wheels
 
@@ -49,10 +40,10 @@ jobs:
 
       - name: Create tar.gz archive
         run: |
-          tar -czvf ${VERSION}.tar.gz wheels
+          tar -czvf offline-wheels-python.tar.gz wheels
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.VERSION }}
-          path: ${{ env.VERSION }}.tar.gz
+          name: offline-wheels-python
+          path: offline-wheels-python.tar.gz
