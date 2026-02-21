@@ -1,4 +1,4 @@
-name: Build Offline Wheels (Python 3.12 Oracle Linux)
+name: Build Offline Python Bundle (Linux - Python 3.12)
 
 on:
   workflow_dispatch:
@@ -9,7 +9,7 @@ on:
         default: "requirements.txt"
 
 jobs:
-  build-wheels:
+  build-offline-bundle:
     runs-on: ubuntu-latest
 
     steps:
@@ -24,25 +24,48 @@ jobs:
       - name: Upgrade pip
         run: python -m pip install --upgrade pip
 
-      - name: Download wheels for Oracle Linux (manylinux2014, cp312)
+      - name: Prepare bundle structure
         run: |
-          mkdir wheels
+          mkdir -p bundle/wheels
+
+      - name: Download wheels (manylinux2014, cp312)
+        run: |
           pip download \
             -r ${{ github.event.inputs.requirements_path }} \
             --only-binary=:all: \
-            --dest wheels \
+            --dest bundle/wheels \
             --platform manylinux2014_x86_64 \
             --implementation cp \
             --python-version 312 \
             --abi cp312
 
-      - name: Create archive
+      - name: Copy requirements.txt into bundle
         run: |
-          cd wheels
-          zip -r ../offline-wheels-python312-manylinux.zip .
+          cp ${{ github.event.inputs.requirements_path }} bundle/requirements.txt
+
+      - name: Create install.sh
+        run: |
+          cat << 'EOF' > bundle/install.sh
+          #!/bin/bash
+          set -e
+
+          echo "Installing Python dependencies in offline mode..."
+
+          pip install --no-index \
+            --find-links=./wheels \
+            -r requirements.txt
+
+          echo "Installation completed successfully."
+          EOF
+
+          chmod +x bundle/install.sh
+
+      - name: Create tar.gz archive
+        run: |
+          tar -czvf offline-python312-manylinux-bundle.tar.gz bundle
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: offline-wheels-python312-manylinux
-          path: offline-wheels-python312-manylinux.zip
+          name: offline-python312-manylinux-bundle
+          path: offline-python312-manylinux-bundle.tar.gz
