@@ -1,4 +1,4 @@
-name: Build Offline Python Bundle (Linux - Python 3.12)
+name: Build Offline Wheels (Oracle Linux x86_64 - Python 3.12)
 
 on:
   workflow_dispatch:
@@ -9,7 +9,7 @@ on:
         default: "requirements.txt"
 
 jobs:
-  build-offline-bundle:
+  build-offline-wheels:
     runs-on: ubuntu-latest
 
     steps:
@@ -24,16 +24,24 @@ jobs:
       - name: Upgrade pip
         run: python -m pip install --upgrade pip
 
-      - name: Prepare bundle structure
+      # 🔹 Génération nom versionné automatique
+      - name: Generate bundle version
         run: |
-          mkdir -p bundle/wheels
+          DATE=$(date +'%Y%m%d')
+          RUN=${{ github.run_number }}
+          VERSION="offline-wheels-python312-manylinux-x86_64-${DATE}-run${RUN}"
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "Bundle version: $VERSION"
 
-      - name: Download wheels (manylinux2014, cp312)
+      - name: Create wheels directory
+        run: mkdir wheels
+
+      - name: Download wheels (manylinux2014, cp312, x86_64)
         run: |
           pip download \
             -r ${{ github.event.inputs.requirements_path }} \
             --only-binary=:all: \
-            --dest bundle/wheels \
+            --dest wheels \
             --platform manylinux2014_x86_64 \
             --implementation cp \
             --python-version 312 \
@@ -41,9 +49,10 @@ jobs:
 
       - name: Create tar.gz archive
         run: |
-          tar -czvf offline-python312-manylinux-bundle.tar.gz bundle
+          tar -czvf ${VERSION}.tar.gz wheels
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          path: offline-python312-manylinux-bundle.tar.gz
+          name: ${{ env.VERSION }}
+          path: ${{ env.VERSION }}.tar.gz
