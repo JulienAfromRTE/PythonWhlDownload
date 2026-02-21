@@ -3,10 +3,10 @@ name: Build Offline Wheels (Oracle Linux x86_64 - Python 3.12)
 on:
   workflow_dispatch:
     inputs:
-      requirements_path:
-        description: "Path to requirements.txt"
+      requirements_content:
+        description: "Contenu complet du fichier requirements.txt"
         required: true
-        default: "requirements.txt"
+        type: string
 
 jobs:
   build-offline-wheels:
@@ -21,13 +21,16 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Create wheels directory ans go inside
-        run: mkdir wheels
+      - name: Prepare requirements file
+        run: |
+          # On écrit le contenu de l'input dans un fichier temporaire
+          echo "${{ github.event.inputs.requirements_content }}" > requirements_temp.txt
 
       - name: Download wheels (manylinux2014, cp312, x86_64)
         run: |
+          mkdir wheels
           pip download \
-            -r ${{ github.event.inputs.requirements_path }} \
+            -r requirements_temp.txt \
             --only-binary=:all: \
             --dest wheels \
             --platform manylinux2014_x86_64 \
@@ -39,4 +42,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: offline-wheels-python
-          path: wheels
+          path: wheels/
+          # L'action upload-artifact zippe automatiquement le dossier.
+          # Le fichier final téléchargé via l'interface ou l'API sera "offline-wheels-python.zip"
