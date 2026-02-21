@@ -38,8 +38,15 @@ jobs:
             --python-version 312 \
             --abi cp312
 
+      - name: Prepare clean tar with wheels folder
+        run: |
+          mkdir bundle
+          mv wheels bundle/
+          tar -czvf offline-wheels-python.tar.gz -C bundle wheels
+          rm -rf bundle  # Supprime le dossier temporaire
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: offline-wheels-python
-          path: wheels
+          path: offline-wheels-python.tar.gz
