@@ -38,12 +38,8 @@ jobs:
             --python-version 312 \
             --abi cp312
 
-      - name: Create tar.gz archive
-        run: |
-          tar -czvf offline-wheels-python.tar.gz wheels
-
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: offline-wheels-python
-          path: offline-wheels-python.tar.gz
+          path: wheels
