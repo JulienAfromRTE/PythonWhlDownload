@@ -13,6 +13,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Validate input size
+        run: |
+          if [ $(echo "${{ github.event.inputs.requirements_content }}" | wc -c) -gt 5000 ]; then
+            echo "Input too large"
+            exit 1
+          fi
+          
       - name: Checkout repository
         uses: actions/checkout@v4
 
