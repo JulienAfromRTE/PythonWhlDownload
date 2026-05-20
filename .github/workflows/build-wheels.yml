@@ -1,11 +1,19 @@
-name: Build Offline Wheels (Oracle Linux x86_64 - Python 3.12)
+name: Build Offline Wheels (Linux x86_64)
 
+# Déclenché par Projectix via l'API GitHub Actions (workflow_dispatch).
+# Construit des wheels Python compatibles Linux/manylinux pour une VM
+# sans accès internet, et les expose en artifact téléchargeable.
 on:
   workflow_dispatch:
     inputs:
       requirements_content:
         description: "Contenu complet du fichier requirements.txt"
         required: true
+        type: string
+      python_version:
+        description: "Version Python de la VM cible (ex: 3.11, 3.12)"
+        required: false
+        default: "3.12"
         type: string
 
 jobs:
@@ -16,24 +24,35 @@ jobs:
       - name: Validate input size
         run: |
           if [ $(echo "${{ github.event.inputs.requirements_content }}" | wc -c) -gt 5000 ]; then
-            echo "Input too large"
+            echo "Input too large (> 5000 chars)"
             exit 1
           fi
-          
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python 3.12
+      - name: Set up Python ${{ github.event.inputs.python_version || '3.12' }}
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "${{ github.event.inputs.python_version || '3.12' }}"
 
       - name: Prepare requirements file
         run: |
-          # On écrit le contenu de l'input dans un fichier temporaire
           echo "${{ github.event.inputs.requirements_content }}" > requirements_temp.txt
+          echo "--- requirements.txt ---"
+          cat requirements_temp.txt
 
-      - name: Download wheels (manylinux2014, cp312, x86_64)
+      - name: Compute pip version tags
+        id: tags
+        run: |
+          # Transforme "3.12" → "312", "3.11" → "311", etc.
+          # Le fallback 3.12 couvre le cas où l'input est vide (déclenchement API sans python_version).
+          PY_NODOT=$(echo "${{ github.event.inputs.python_version || '3.12' }}" | tr -d '.')
+          echo "py_nodot=${PY_NODOT}" >> "$GITHUB_OUTPUT"
+          echo "abi=cp${PY_NODOT}" >> "$GITHUB_OUTPUT"
+          echo "Python version tag: cp${PY_NODOT}"
+
+      - name: Download wheels (manylinux2014, x86_64)
         run: |
           mkdir wheels
           pip download \
@@ -42,13 +61,13 @@ jobs:
             --dest wheels \
             --platform manylinux2014_x86_64 \
             --implementation cp \
-            --python-version 312 \
-            --abi cp312
+            --python-version ${{ steps.tags.outputs.py_nodot }} \
+            --abi ${{ steps.tags.outputs.abi }}
+          echo "--- Wheels downloaded ---"
+          ls -lh wheels/
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: offline-wheels-python.zip
           path: wheels/
-          # L'action upload-artifact zippe automatiquement le dossier.
-          # Le fichier final téléchargé via l'interface ou l'API sera "offline-wheels-python.zip"
